@@ -24,12 +24,19 @@ sqlx = { version = "0.7", features = [
 ] }
 tonic = "0.10"
 prost = "0.12"
-candle-core = "0.3"
-candle-nn = "0.3"
-candle-transformers = "0.3"
+# Simple math libraries without candle dependencies
+nalgebra = "0.32"
+statrs = "0.16"
 dashmap = "5.5"
 arc-swap = "1.6"
 metrics = "0.22"
 metrics-exporter-prometheus = "0.13"
 clap = { version = "4.0", features = ["derive"] }
 config = "0.14"
+toml = "0.8"
+rand = "0.8"
+rand_distr = "0.4"
+# Web server dependencies
+axum = { version = "0.7", features = ["ws"] }
+tower-http = { version = "0.5", features = ["fs"] }
+futures-util = "0.3"

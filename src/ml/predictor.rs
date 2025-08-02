@@ -41,7 +41,7 @@ impl LoadPredictor {
                 // Create input data for LSTM
                 let input_data = TimeSeriesData {
                     timestamps: vec![chrono::Utc::now()], // Simplified
-                    values: recent_data,
+                    values: recent_data.clone(),
                     resource_id: resource_id.clone(),
                     metric_type: "cpu_utilization".to_string(),
                 };
@@ -73,7 +73,7 @@ impl LoadPredictor {
                 
                 let input_data = TimeSeriesData {
                     timestamps: vec![chrono::Utc::now()],
-                    values: recent_data,
+                    values: recent_data.clone(),
                     resource_id: resource_id.to_string(),
                     metric_type: "cpu_utilization".to_string(),
                 };

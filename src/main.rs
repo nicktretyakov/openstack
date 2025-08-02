@@ -10,11 +10,13 @@ mod ml;
 mod scheduler;
 mod config;
 mod error;
+mod web; // Add web module
 
 use crate::config::Config;
 use crate::metrics::MetricsCollector;
 use crate::ml::MLEngine;
 use crate::scheduler::ResourceScheduler;
+use crate::web::DashboardServer; // Add dashboard import
 
 #[derive(Parser)]
 #[command(name = "openstack-metrics-service")]
@@ -22,6 +24,9 @@ use crate::scheduler::ResourceScheduler;
 struct Cli {
     #[arg(short, long, default_value = "config.toml")]
     config: String,
+    
+    #[arg(long, default_value = "8080")]
+    dashboard_port: u16,
 }
 
 #[tokio::main]
@@ -32,7 +37,7 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
     let config = Config::from_file(&cli.config)?;
     
-    info!("Starting OpenStack Metrics Service");
+    info!("Starting OpenStack Metrics Service with ML Dashboard");
     
     // Initialize core components
     let openstack_client = Arc::new(
@@ -53,6 +58,13 @@ async fn main() -> Result<()> {
             openstack_client.clone(),
             ml_engine.clone()
         ).await?
+    );
+    
+    // Initialize dashboard server
+    let dashboard_server = DashboardServer::new(
+        ml_engine.clone(),
+        metrics_collector.clone(),
+        scheduler.clone(),
     );
     
     // Start services
@@ -83,7 +95,18 @@ async fn main() -> Result<()> {
         }
     });
     
+    // Start dashboard server
+    let dashboard_handle = tokio::spawn({
+        let server = dashboard_server;
+        async move {
+            if let Err(e) = server.start(cli.dashboard_port).await {
+                warn!("Dashboard server error: {}", e);
+            }
+        }
+    });
+    
     info!("All services started successfully");
+    info!("Dashboard available at http://localhost:{}", cli.dashboard_port);
     
     // Wait for shutdown signal
     signal::ctrl_c().await?;
@@ -93,6 +116,7 @@ async fn main() -> Result<()> {
     metrics_handle.abort();
     ml_handle.abort();
     scheduler_handle.abort();
+    dashboard_handle.abort();
     
     Ok(())
 }

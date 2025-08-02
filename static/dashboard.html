@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenStack ML Monitoring Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .alert-critical { @apply bg-red-100 border-red-500 text-red-700; }
+        .alert-warning { @apply bg-yellow-100 border-yellow-500 text-yellow-700; }
+        .alert-info { @apply bg-blue-100 border-blue-500 text-blue-700; }
+        .metric-card { @apply bg-white rounded-lg shadow-md p-6 border-l-4; }
+        .metric-good { @apply border-green-500; }
+        .metric-warning { @apply border-yellow-500; }
+        .metric-critical { @apply border-red-500; }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800 mb-2">OpenStack ML Monitoring Dashboard</h1>
+            <p class="text-gray-600">Real-time monitoring of ML predictions and system performance</p>
+            <div class="mt-4 flex items-center space-x-4">
+                <div class="flex items-center">
+                    <div id="connection-status" class="w-3 h-3 rounded-full bg-red-500 mr-2"></div>
+                    <span class="text-sm text-gray-600">Connection Status</span>
+                </div>
+                <div class="text-sm text-gray-600">
+                    Last Updated: <span id="last-updated">Never</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div class="metric-card metric-good">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Total Resources</p>
+                        <p id="total-resources" class="text-2xl font-bold text-gray-900">0</p>
+                    </div>
+                    <div class="text-green-500">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card metric-good">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Model Accuracy</p>
+                        <p id="model-accuracy" class="text-2xl font-bold text-gray-900">0%</p>
+                    </div>
+                    <div class="text-blue-500">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card metric-warning">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">Inference Latency</p>
+                        <p id="inference-latency" class="text-2xl font-bold text-gray-900">0ms</p>
+                    </div>
+                    <div class="text-yellow-500">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+
+            <div class="metric-card metric-good">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">CPU Usage</p>
+                        <p id="cpu-usage" class="text-2xl font-bold text-gray-900">0%</p>
+                    </div>
+                    <div class="text-purple-500">
+                        <svg class="w-8 h-8" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z"></path>
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+            <!-- Predictions Chart -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Resource Predictions</h3>
+                <canvas id="predictions-chart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Accuracy Trend Chart -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Model Accuracy Trend</h3>
+                <canvas id="accuracy-chart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Predictions Table and Alerts -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Active Predictions -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Active Predictions</h3>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Resource</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Predicted</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Confidence</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trend</th>
+                            </tr>
+                        </thead>
+                        <tbody id="predictions-table" class="bg-white divide-y divide-gray-200">
+                            <!-- Populated by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Alerts -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h3 class="text-lg font-semibold text-gray-800 mb-4">Active Alerts</h3>
+                <div id="alerts-container" class="space-y-3">
+                    <!-- Populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class MLDashboard {
+            constructor() {
+                this.ws = null;
+                this.predictionsChart = null;
+                this.accuracyChart = null;
+                this.reconnectAttempts = 0;
+                this.maxReconnectAttempts = 5;
+                
+                this.initializeCharts();
+                this.connectWebSocket();
+                this.loadInitialData();
+            }
+
+            connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/ws`;
+                
+                this.ws = new WebSocket(wsUrl);
+                
+                this.ws.onopen = () => {
+                    console.log('WebSocket connected');
+                    this.updateConnectionStatus(true);
+                    this.reconnectAttempts = 0;
+                    
+                    // Subscribe to updates
+                    this.ws.send(JSON.stringify({
+                        type: 'subscribe',
+                        topics: ['predictions', 'metrics', 'alerts']
+                    }));
+                };
+                
+                this.ws.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        this.updateDashboard(data);
+                    } catch (error) {
+                        console.error('Error parsing WebSocket message:', error);
+                    }
+                };
+                
+                this.ws.onclose = () => {
+                    console.log('WebSocket disconnected');
+                    this.updateConnectionStatus(false);
+                    this.attemptReconnect();
+                };
+                
+                this.ws.onerror = (error) => {
+                    console.error('WebSocket error:', error);
+                    this.updateConnectionStatus(false);
+                };
+            }
+
+            attemptReconnect() {
+                if (this.reconnectAttempts < this.maxReconnectAttempts) {
+                    this.reconnectAttempts++;
+                    const delay = Math.pow(2, this.reconnectAttempts) * 1000;
+                    
+                    console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+                    setTimeout(() => this.connectWebSocket(), delay);
+                }
+            }
+
+            updateConnectionStatus(connected) {
+                const statusElement = document.getElementById('connection-status');
+                if (connected) {
+                    statusElement.className = 'w-3 h-3 rounded-full bg-green-500 mr-2';
+                } else {
+                    statusElement.className = 'w-3 h-3 rounded-full bg-red-500 mr-2';
+                }
+            }
+
+            async loadInitialData() {
+                try {
+                    const [predictions, metrics, alerts] = await Promise.all([
+                        fetch('/api/predictions').then(r => r.json()),
+                        fetch('/api/metrics').then(r => r.json()),
+                        fetch('/api/alerts').then(r => r.json())
+                    ]);
+                    
+                    this.updateDashboard({
+                        active_predictions: predictions,
+                        system_metrics: metrics,
+                        alerts: alerts
+                    });
+                } catch (error) {
+                    console.error('Error loading initial data:', error);
+                }
+            }
+
+            updateDashboard(data) {
+                if (data.system_metrics) {
+                    this.updateSystemMetrics(data.system_metrics);
+                }
+                
+                if (data.active_predictions) {
+                    this.updatePredictionsTable(data.active_predictions);
+                    this.updatePredictionsChart(data.active_predictions);
+                }
+                
+                if (data.alerts) {
+                    this.updateAlerts(data.alerts);
+                }
+                
+                if (data.performance_stats && data.performance_stats.accuracy_trend) {
+                    this.updateAccuracyChart(data.performance_stats.accuracy_trend);
+                }
+                
+                document.getElementById('last-updated').textContent = new Date().toLocaleTimeString();
+            }
+
+            updateSystemMetrics(metrics) {
+                document.getElementById('total-resources').textContent = metrics.total_resources;
+                document.getElementById('model-accuracy').textContent = `${(metrics.model_accuracy * 100).toFixed(1)}%`;
+                document.getElementById('inference-latency').textContent = `${metrics.inference_latency_ms.toFixed(1)}ms`;
+                document.getElementById('cpu-usage').textContent = `${metrics.cpu_usage_percent.toFixed(1)}%`;
+            }
+
+            updatePredictionsTable(predictions) {
+                const tbody = document.getElementById('predictions-table');
+                tbody.innerHTML = '';
+                
+                Object.values(predictions).forEach(prediction => {
+                    const row = document.createElement('tr');
+                    const nextPrediction = prediction.predicted_values[0] || 0;
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            ${prediction.resource_id}
+                            <div class="text-xs text-gray-500">${prediction.resource_type}</div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${prediction.current_value.toFixed(1)}%
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            ${nextPrediction.toFixed(1)}%
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <div class="flex items-center">
+                                <div class="w-16 bg-gray-200 rounded-full h-2 mr-2">
+                                    <div class="bg-blue-600 h-2 rounded-full" style="width: ${prediction.confidence * 100}%"></div>
+                                </div>
+                                <span class="text-sm text-gray-900">${(prediction.confidence * 100).toFixed(0)}%</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${this.getTrendClass(prediction.trend)}">
+                                ${prediction.trend}
+                            </span>
+                        </td>
+                    `;
+                    tbody.appendChild(row);
+                });
+            }
+
+            getTrendClass(trend) {
+                switch (trend.toLowerCase()) {
+                    case 'increasing':
+                        return 'bg-red-100 text-red-800';
+                    case 'decreasing':
+                        return 'bg-green-100 text-green-800';
+                    default:
+                        return 'bg-gray-100 text-gray-800';
+                }
+            }
+
+            updateAlerts(alerts) {
+                const container = document.getElementById('alerts-container');
+                container.innerHTML = '';
+                
+                if (alerts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">No active alerts</p>';
+                    return;
+                }
+                
+                alerts.forEach(alert => {
+                    const alertElement = document.createElement('div');
+                    alertElement.className = `border-l-4 p-4 ${this.getAlertClass(alert.severity)}`;
+                    
+                    alertElement.innerHTML = `
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="font-medium">${alert.message}</p>
+                                <p class="text-sm mt-1">${new Date(alert.timestamp).toLocaleString()}</p>
+                            </div>
+                            <button onclick="dashboard.acknowledgeAlert('${alert.id}')" 
+                                    class="text-sm px-3 py-1 bg-white border rounded hover:bg-gray-50">
+                                Acknowledge
+                            </button>
+                        </div>
+                    `;
+                    
+                    container.appendChild(alertElement);
+                });
+            }
+
+            getAlertClass(severity) {
+                switch (severity) {
+                    case 'Critical':
+                        return 'alert-critical';
+                    case 'Warning':
+                        return 'alert-warning';
+                    default:
+                        return 'alert-info';
+                }
+            }
+
+            async acknowledgeAlert(alertId) {
+                try {
+                    await fetch(`/api/alerts/${alertId}/acknowledge`, { method: 'POST' });
+                } catch (error) {
+                    console.error('Error acknowledging alert:', error);
+                }
+            }
+
+            initializeCharts() {
+                // Predictions Chart
+                const predictionsCtx = document.getElementById('predictions-chart').getContext('2d');
+                this.predictionsChart = new Chart(predictionsCtx, {
+                    type: 'line',
+                    data: {
+                        labels: Array.from({length: 24}, (_, i) => `${i}:00`),
+                        datasets: []
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Utilization (%)'
+                                }
+                            },
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'Time (Hours)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        }
+                    }
+                });
+
+                // Accuracy Chart
+                const accuracyCtx = document.getElementById('accuracy-chart').getContext('2d');
+                this.accuracyChart = new Chart(accuracyCtx, {
+                    type: 'line',
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Model Accuracy',
+                            data: [],
+                            borderColor: 'rgb(59, 130, 246)',
+                            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: false,
+                                min: 0.7,
+                                max: 1.0,
+                                title: {
+                                    display: true,
+                                    text: 'Accuracy'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            updatePredictionsChart(predictions) {
+                const datasets = [];
+                const colors = [
+                    'rgb(239, 68, 68)',
+                    'rgb(59, 130, 246)',
+                    'rgb(16, 185, 129)',
+                    'rgb(245, 158, 11)',
+                    'rgb(139, 92, 246)'
+                ];
+                
+                let colorIndex = 0;
+                Object.values(predictions).slice(0, 5).forEach(prediction => {
+                    datasets.push({
+                        label: prediction.resource_id,
+                        data: prediction.predicted_values,
+                        borderColor: colors[colorIndex % colors.length],
+                        backgroundColor: colors[colorIndex % colors.length] + '20',
+                        tension: 0.4
+                    });
+                    colorIndex++;
+                });
+                
+                this.predictionsChart.data.datasets = datasets;
+                this.predictionsChart.update();
+            }
+
+            updateAccuracyChart(accuracyTrend) {
+                const labels = accuracyTrend.map((_, i) => i.toString());
+                
+                this.accuracyChart.data.labels = labels;
+                this.accuracyChart.data.datasets[0].data = accuracyTrend;
+                this.accuracyChart.update();
+            }
+        }
+
+        // Initialize dashboard when page loads
+        let dashboard;
+        document.addEventListener('DOMContentLoaded', () => {
+            dashboard = new MLDashboard();
+        });
+    </script>
+</body>
+</html>

@@ -7,7 +7,6 @@ use tracing::{debug, error, info};
 
 use crate::config::MetricsConfig;
 use crate::openstack::Client;
-use crate::openstack::services::{ServerMetrics, NetworkMetrics, StorageMetrics};
 use super::kafka_producer::KafkaProducer;
 
 pub struct MetricsCollector {

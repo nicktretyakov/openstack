@@ -1,11 +1,11 @@
 use anyhow::Result;
 use reqwest::{Client as HttpClient, header::{HeaderMap, HeaderValue}};
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{debug, info};
+use tracing::info;
 
-use super::auth::{AuthManager, AuthToken};
+use super::auth::AuthManager;
 use super::services::{NovaService, NeutronService, CinderService, TelemetryService};
 use crate::config::OpenStackConfig;
 use crate::error::OpenStackError;
@@ -50,7 +50,8 @@ impl Client {
     
     pub async fn get_auth_token(&self) -> Result<String> {
         let auth_manager = self.auth_manager.read().await;
-        Ok(auth_manager.get_token().await?.token)
+        let token = auth_manager.get_token().await?;
+        Ok(token.token.clone())
     }
     
     pub async fn make_authenticated_request<T: for<'de> Deserialize<'de>>(

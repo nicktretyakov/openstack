@@ -2,7 +2,7 @@ use anyhow::Result;
 use chrono::{DateTime, Utc, Duration};
 use reqwest::Client as HttpClient;
 use serde::{Deserialize, Serialize};
-use tracing::{debug, warn};
+use tracing::debug;
 
 use crate::config::OpenStackConfig;
 use crate::error::OpenStackError;
@@ -163,7 +163,8 @@ impl AuthManager {
         let token_header = response.headers()
             .get("X-Subject-Token")
             .ok_or_else(|| OpenStackError::AuthError("No token in response".to_string()))?
-            .to_str()?;
+            .to_str()?
+            .to_string();
         
         let auth_response: AuthResponse = response.json().await?;
         
@@ -171,7 +172,7 @@ impl AuthManager {
             .with_timezone(&Utc);
         
         self.current_token = Some(AuthToken {
-            token: token_header.to_string(),
+            token: token_header,
             expires_at,
             project_id: auth_response.token.project.id,
             user_id: auth_response.token.user.id,

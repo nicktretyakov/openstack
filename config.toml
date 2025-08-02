@@ -1,0 +1,31 @@
+[openstack]
+auth_url = "http://keystone:5000"
+username = "admin"
+password = "admin_password"
+project_name = "admin"
+project_domain = "Default"
+user_domain = "Default"
+region_name = "RegionOne"
+
+[metrics]
+discovery_interval_seconds = 30
+compute_interval_seconds = 5
+network_interval_seconds = 10
+storage_interval_seconds = 15
+
+[metrics.kafka_config]
+brokers = "localhost:9092"
+compute_topic = "openstack.compute.metrics"
+network_topic = "openstack.network.metrics"
+storage_topic = "openstack.storage.metrics"
+
+[ml]
+model_path = "./models/lstm_load_predictor.bin"
+inference_interval_seconds = 60
+retrain_threshold = 0.85
+
+[scheduler]
+scheduling_interval_seconds = 30
+high_load_threshold = 80.0
+low_load_threshold = 20.0
+sla_check_interval_seconds = 10
